@@ -28,4 +28,4 @@
     * 환경은 초기화 후 Gym 환경처럼 사용할 수 있습니다. reset()으로 초기화하고, step()으로 행동을 수행하며 환경을 진행합니다.
 
 [ 참고사항 ]
-- requirements.txt install : conda install --yes --file requirements.txt
+- requirements.txt install : conda install --yes --file requirements.txt / pip install -r requirements.txt
