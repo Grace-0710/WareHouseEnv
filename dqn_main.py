@@ -1,10 +1,10 @@
 import numpy as np
 import gym
-from stable_baselines3 import PPO, A2C, DQN, DDPG
+from dqn import DQN 
 from stable_baselines3.common.vec_env import DummyVecEnv
 from env2 import WareHouseEnv
 import warnings
-
+import matplotlib.pyplot as plt
 # 경고 메시지 무시 설정
 warnings.filterwarnings('ignore', category=UserWarning, module='stable_baselines3.common.vec_env.base_vec_env')
 
@@ -24,9 +24,11 @@ model.learn(total_timesteps=100_000_000)
 
 # 학습된 모델을 환경에서 테스트
 obs = env.reset()
+reward_return_list = []
 for _ in range(100_000_000):
     action, _states = model.predict(obs)
     obs, rewards, dones, info = env.step(action)
+    reward_return_list.append(rewards)
     # env.render()
     # env.envs[0].render()
     # time.sleep(0.3)
@@ -34,3 +36,10 @@ for _ in range(100_000_000):
 
 
 env.close()
+
+plt.plot(reward_return_list)
+plt.xlabel('Iteration')
+plt.ylabel('Reward Return')
+plt.savefig('Reward_returns.png', format='png', dpi=300)
+# Display the plot
+plt.show()
