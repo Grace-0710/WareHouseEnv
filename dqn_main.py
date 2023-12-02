@@ -29,17 +29,13 @@ for _ in range(100_000_000):
     action, _states = model.predict(obs)
     obs, rewards, dones, info = env.step(action)
     reward_return_list.append(rewards)
-    # env.render()
-    # env.envs[0].render()
-    # time.sleep(0.3)
-
 
 
 env.close()
 
 plt.plot(reward_return_list)
 plt.xlabel('Iteration')
-plt.ylabel('Reward Return')
-plt.savefig('Reward_returns.png', format='png', dpi=300)
+plt.ylabel('Reward DQN')
+plt.savefig('Reward_DQN.png', format='png', dpi=300)
 # Display the plot
 plt.show()

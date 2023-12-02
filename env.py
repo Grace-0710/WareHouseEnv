@@ -17,17 +17,18 @@ class WareHouseEnv(gym.Env):
         self.max_steps = max_steps
         self.current_step = 0                                                                                                      
         
+        self.num_lift = 2
+        self.num_robot = 3
+
         # Actions for each vehicle: 0:up, 1:right, 2:down, 3:left
-        self.action_space = spaces.MultiDiscrete([4] * (2 + 3))
+        total_action_combinations = 4 ** (self.num_lift + self.num_robot) 
+        self.action_space = spaces.Discrete(total_action_combinations)
         self.observation_space = spaces.Box(low=0, high=5, shape=(map_size, map_size), dtype=np.int32)
 
         self.desired_total_sum = 150
         self.cargo_map = self.generate_fixed_sum_array((map_size, map_size), self.desired_total_sum)
         # self.cargo_map = np.random.randint(0, 11, (map_size, map_size))
         self.cargo_map[0][0] = 0  # soil_bank position
-
-        self.num_lift = 2
-        self.num_robot = 3
 
         # Initialize the positions, can be randomized
         self.lift_positions = [[2, 2], [2, 3]]
@@ -59,6 +60,11 @@ class WareHouseEnv(gym.Env):
         return self.cargo_map
 
     def step(self, actions):
+        individual_actions = []
+        for _ in range(self.num_lift + self.num_robot):
+            individual_actions.append(actions % 4)
+            actions //= 4
+        individual_actions.reverse()
 
         # 초기화 보상
         reward = 0
@@ -66,9 +72,9 @@ class WareHouseEnv(gym.Env):
         robot_penalty = 0
         lift_bonus = 0
         
-        # Move each excavator based on its action
+        # Apply actions to lifts
         for i in range(self.num_lift):
-            action = actions[i]
+            action = individual_actions[i]
             if self.lift_carry[i] != 1:
                 prev_position = list(self.lift_positions[i])
                 if action == 0:  # up
@@ -86,7 +92,7 @@ class WareHouseEnv(gym.Env):
 
         # Move each dumptruck based on its action
         for i in range(self.num_robot):
-            action = actions[self.num_lift + i]
+            action = individual_actions[self.num_lift + i]
             prev_position = list(self.robot_positions[i])
             if action == 0:  # up
                 self.robot_positions[i][1] = min(self.map_size-1, self.robot_positions[i][1] + 1)
