@@ -29,7 +29,8 @@
 
 [ 프로젝트 빌드 ]
 - 환경 : anaconda로 가상환경 구축 후 실행
-- WareHouseEnv 환경구축 파일 : env.py, env2.py
-- dqn 파일 : dqn.py
-1. requirements.txt install : pip install -r requirements.txt
+- WareHouseEnv 환경구축 파일 : env.py
+- dqn 파일 : dqn_sy.py
+- custom dqn 파일 : ex16_dqn_main.py
+1. requirements.txt install : pip install -r requirements.txt ( pip3 install -r requirements.txt )
 2. train 학습 run : python dqn_main.py
