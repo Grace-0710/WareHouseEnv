@@ -1,8 +1,8 @@
 import numpy as np
 import gym
-from dqn import DQN 
+from dqn_sy import DQN 
 from stable_baselines3.common.vec_env import DummyVecEnv
-from env2 import WareHouseEnv
+from env import WareHouseEnv
 import warnings
 import matplotlib.pyplot as plt
 # 경고 메시지 무시 설정
