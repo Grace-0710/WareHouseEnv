@@ -1,83 +1,36 @@
 import numpy as np
-import random
-from collections import deque
 import gym
-from tensorflow.keras import models, layers, optimizers
-from env import WareHouseEnv
+from stable_baselines3 import PPO, A2C, DQN, DDPG
+from stable_baselines3.common.vec_env import DummyVecEnv
+from env2 import WareHouseEnv
+import warnings
 
-class DQNAgent:
-    def __init__(self, state_size, action_size):
-        self.state_size = state_size
-        self.action_size = action_size
-        self.memory = deque(maxlen=2000)
-        self.gamma = 0.95  # discount rate
-        self.epsilon = 1.0  # exploration rate
-        self.epsilon_min = 0.01
-        self.epsilon_decay = 0.995
-        self.learning_rate = 0.001
-        self.model = self._build_model()
+# 경고 메시지 무시 설정
+warnings.filterwarnings('ignore', category=UserWarning, module='stable_baselines3.common.vec_env.base_vec_env')
 
-    def _build_model(self):
-        # Neural Net for Deep-Q learning Model
-        model = models.Sequential()
-        model.add(layers.Dense(24, input_dim=self.state_size, activation='relu'))
-        model.add(layers.Dense(24, activation='relu'))
-        model.add(layers.Dense(self.action_size, activation='linear'))
-        model.compile(loss='mse',
-                      optimizer=optimizers.Adam(lr=self.learning_rate))
-        return model
+import time
+# [ExcavatorEnv 코드는 여기에 위치]
+ 
+# 환경 생성
+env = DummyVecEnv([lambda: WareHouseEnv(map_size=4, max_steps=5000, graphic=0, fps=30)])
 
-    def remember(self, state, action, reward, next_state, done):
-        self.memory.append((state, action, reward, next_state, done))
+def learning_rate_schedule(progress_remaining):
+    # 이 함수는 학습의 진행에 따라 학습률을 반환합니다.
+    # progress_remaining 값은 1에서 시작하여 0으로 줄어듭니다.
+    return 0.001 * progress_remaining
 
-    def act(self, state):
-        if np.random.rand() <= self.epsilon:
-            return random.randrange(self.action_size)
-        act_values = self.model.predict(state)
-        return np.argmax(act_values[0])  # returns action
+model = DQN("MlpPolicy", env, verbose=0, learning_rate=learning_rate_schedule)
+model.learn(total_timesteps=100_000_000)
 
-    def replay(self, batch_size):
-        minibatch = random.sample(self.memory, batch_size)
-        for state, action, reward, next_state, done in minibatch:
-            target = reward
-            if not done:
-                target = (reward + self.gamma *
-                          np.amax(self.model.predict(next_state)[0]))
-            target_f = self.model.predict(state)
-            target_f[0][action] = target
-            self.model.fit(state, target_f, epochs=1, verbose=0)
-        if self.epsilon > self.epsilon_min:
-            self.epsilon *= self.epsilon_decay
+# 학습된 모델을 환경에서 테스트
+obs = env.reset()
+for _ in range(100_000_000):
+    action, _states = model.predict(obs)
+    obs, rewards, dones, info = env.step(action)
+    # env.render()
+    # env.envs[0].render()
+    # time.sleep(0.3)
 
-    def load(self, name):
-        self.model.load_weights(name)
 
-    def save(self, name):
-        self.model.save_weights(name)
 
-# initialize gym environment and the agent
-env = WareHouseEnv()  # Replace this with your environment
-state_size = env.observation_space.shape[0]
-action_size = env.action_space.nvec
-agent = DQNAgent(state_size, action_size)
-
-# Iterate the game
-for e in range(1000):  # replace 1000 with the number of episodes you wish to train
-    state = env.reset()
-    state = np.reshape(state, [1, state_size])
-    
-    for time in range(500):  # replace 500 with the maximum number of steps per episode
-        action = agent.act(state)
-        next_state, reward, done, _ = env.step(action)
-        reward = reward if not done else -10
-        next_state = np.reshape(next_state, [1, state_size])
-        agent.remember(state, action, reward, next_state, done)
-        state = next_state
-        if done:
-            print("episode: {}/{}, score: {}, e: {:.2}"
-                  .format(e, 1000, time, agent.epsilon))
-            break
-        if len(agent.memory) > 32:
-            agent.replay(32)
-
-    # save the model every 50 episodes
+env.close()
