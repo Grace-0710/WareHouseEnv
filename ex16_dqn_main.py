@@ -28,11 +28,11 @@ class ReplayBuffer():
         for transition in mini_batch:
             s, a, r, s_prime, done_mask = transition
             s_lst.append(s)
-            a_lst.append(a.item())
+            a_lst.append(a)  # Directly append the action without .item()
             r_lst.append([r])
             s_prime_lst.append(s_prime)
             done_mask_lst.append([done_mask])
-        print("ReplayBuffer a_lst:::::::", a_lst)
+
         return (
             torch.tensor(np.array(s_lst), dtype=torch.float),
             torch.tensor(np.array(a_lst), dtype=torch.long).view(-1, 1),
@@ -48,11 +48,11 @@ class ReplayBuffer():
 
 
 class Qnet(nn.Module):
-    def __init__(self):
+    def __init__(self, num_inputs, num_actions):
         super(Qnet, self).__init__()
-        self.fc1 = nn.Linear(4, 128)
+        self.fc1 = nn.Linear(num_inputs, 128)
         self.fc2 = nn.Linear(128, 128)
-        self.fc3 = nn.Linear(128, 2)
+        self.fc3 = nn.Linear(128, num_actions)  # Output layer for num_actions
 
     def forward(self, x):
         x = F.relu(self.fc1(x))
@@ -61,67 +61,99 @@ class Qnet(nn.Module):
         return x
 
     def sample_action(self, obs, epsilon):
+        obs = obs.view(1, -1)  # Flatten the observation and add batch dimension
         out = self.forward(obs)
         coin = random.random()
         if coin < epsilon:
-            return torch.tensor([random.randint(0, 1)])
+            return random.randint(0, out.size(-1) - 1)
         else:
-            return out.argmax().unsqueeze(0)
+            return out.argmax().item()
 
 def train(q, q_target, memory, optimizer):
     for i in range(10):
         s, a, r, s_prime, done_mask = memory.sample(batch_size)
+ 
+        s = s.view(s.size(0), -1)  # Reshaping to [batch_size, -1]
+        s_prime = s_prime.view(s_prime.size(0), -1)
 
-        q_out = q(s)
-        print("a shape:::::::", a.shape)
-        # train 함수 내의 수정된 코드
-        q_a = q_out.gather(1, a.view(-1,1).long())
-        # 이후는 동일하게 유지
+        q_out = q(s)  # Q-values for all actions
+        # Ensure that 'a' is in the correct shape for gather
+        a = torch.tensor(a, dtype=torch.long).view(-1, 1)
+        # Use gather to select the Q-values for the actions taken
+        q_a = q_out.gather(1, a)  # This should align the dimensions correctly
+
+        r = r.view(-1, 1)
+        done_mask = done_mask.view(-1, 1)
+        
+        # Calculate the target Q-values
         max_q_prime = q_target(s_prime).max(1)[0].unsqueeze(1)
         target = r + gamma * max_q_prime * done_mask
-        loss = F.mse_loss(q_a, target)
 
+
+        loss = F.mse_loss(q_a, target)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
 def main():
-    env = DummyVecEnv([lambda: WareHouseEnv(map_size=4, max_steps=5000, graphic=0, fps=30)])
-    q = Qnet()
-    q_target = Qnet()
-    q_target.load_state_dict(q.state_dict())
+    num_lifts = 2
+    num_robots = 3
+    map_size = 3
+    env = DummyVecEnv([lambda: WareHouseEnv(map_size=map_size, max_steps=2000, graphic=0, fps=150)])
+
+    # Instantiate Qnet with the correct number of input features
+    q_models = [Qnet(map_size**2, 4) for _ in range(num_lifts + num_robots)]
+    q_targets = [Qnet(map_size**2, 4) for _ in range(num_lifts + num_robots)]
+
+    for i in range(num_lifts + num_robots):
+        q_targets[i].load_state_dict(q_models[i].state_dict())
     memory = ReplayBuffer()
 
     print_interval = 20
     score = 0.0
-    optimizer = optim.Adam(q.parameters(), lr=learning_rate)
+    optimizers = [optim.Adam(q.parameters(), lr=learning_rate) for q in q_models]
 
+    
     for n_epi in range(3000):
-        epsilon = max(0.01, 0.08 - 0.01 * (n_epi / 200))
+        epsilon = max(0.01, 0.08 - 0.01 * (n_epi / 200))  # Adjusted epsilon decay
         s = env.reset()
+        step_count = 0
+        score = 0.0
 
         done = False
 
         while not done:
-            a = q.sample_action(torch.from_numpy(s).float(), epsilon)
-            s_prime, r, terminated, truncated = env.step(a)
-            done = (terminated or truncated)
+            a = []
+            step_count += 1
+            for i in range(num_lifts + num_robots):
+                action = q_models[i].sample_action(torch.from_numpy(s).float(), epsilon)
+                a.append(action)
+                # Convert separate actions into a single action for the environment
+            combined_action = sum([a[i] * (4 ** i) for i in range(num_lifts + num_robots)])
+            
+            # Pass action as a list with a single element
+            s_prime, r, done, _ = env.step([combined_action])  # Modified line
+            # done = (terminated or truncated)
             done_mask = 0.0 if done else 1.0
-            memory.put((s, a, r / 100.0, s_prime, done_mask))
+            for i in range(num_lifts + num_robots):
+                memory.put((s, a[i], r / 100.0, s_prime, done_mask))  # Store experience for each agent
             s = s_prime
 
             score += r
             if done:
+                print(f"Episode: {n_epi}, step: {step_count}, Reward: {score}")
                 break
 
         if memory.size() > 2000:
-            train(q, q_target, memory, optimizer)
+            for i in range(num_lifts + num_robots):
+                train(q_models[i], q_targets[i], memory, optimizers[i])  # Train each model separately
 
         if n_epi % print_interval == 0 and n_epi != 0:
-            q_target.load_state_dict(q.state_dict())
-            print("n_episode :{}, score : {:.1f}, n_buffer : {}, eps : {:.1f}%".format(
+            for i in range(num_lifts + num_robots):
+                q_targets[i].load_state_dict(q_models[i].state_dict())
+            print("Episode: {}, Score: {:.1f}, Buffer: {}, Eps: {:.1f}%".format(
                 n_epi, float(score / print_interval), memory.size(), float(epsilon * 100)
-            ))
+                ))
             score = 0.0
 
     env.close()
