@@ -2,7 +2,7 @@ import numpy as np
 import gym
 from stable_baselines3 import PPO, A2C, DQN, DDPG
 from stable_baselines3.common.vec_env import DummyVecEnv
-from env2 import WareHouseEnv
+from env import WareHouseEnv
 import warnings
 import matplotlib.pyplot as plt
 # 경고 메시지 무시 설정

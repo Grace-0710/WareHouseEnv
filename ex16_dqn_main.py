@@ -7,10 +7,17 @@ import torch.nn.functional as F
 from stable_baselines3.common.vec_env import DummyVecEnv
 from env import WareHouseEnv  # env 모듈 경로를 실제 모듈 위치로 변경
 import numpy as np
+import warnings
+import matplotlib.pyplot as plt
+
+# 경고메세지 끄기
+warnings.filterwarnings(action='ignore')
+
 # 하이퍼파라미터
 learning_rate = 0.0005
 gamma = 0.98
-buffer_limit = 50000
+# 더 큰 리플레이 버퍼 크기로 시도
+buffer_limit = 5000
 batch_size = 32
 
 
@@ -78,7 +85,7 @@ def train(q, q_target, memory, optimizer):
 
         q_out = q(s)  # Q-values for all actions
         # Ensure that 'a' is in the correct shape for gather
-        a = torch.tensor(a, dtype=torch.long).view(-1, 1)
+        a = torch.tensor(a, dtype=torch.long).clone().detach().view(-1, 1)  # Convert 'a' to 2D tensor
         # Use gather to select the Q-values for the actions taken
         q_a = q_out.gather(1, a)  # This should align the dimensions correctly
 
@@ -89,17 +96,17 @@ def train(q, q_target, memory, optimizer):
         max_q_prime = q_target(s_prime).max(1)[0].unsqueeze(1)
         target = r + gamma * max_q_prime * done_mask
 
-
         loss = F.mse_loss(q_a, target)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
+
 def main():
     num_lifts = 2
     num_robots = 3
-    map_size = 3
-    env = DummyVecEnv([lambda: WareHouseEnv(map_size=map_size, max_steps=2000, graphic=0, fps=150)])
+    map_size = 4
+    env = DummyVecEnv([lambda: WareHouseEnv(map_size=map_size, max_steps=5000, graphic=0, fps=150)])
 
     # Instantiate Qnet with the correct number of input features
     q_models = [Qnet(map_size**2, 4) for _ in range(num_lifts + num_robots)]
@@ -112,10 +119,13 @@ def main():
     print_interval = 20
     score = 0.0
     optimizers = [optim.Adam(q.parameters(), lr=learning_rate) for q in q_models]
-
+    reward_return_list = []
     
     for n_epi in range(3000):
-        epsilon = max(0.01, 0.08 - 0.01 * (n_epi / 200))  # Adjusted epsilon decay
+        # 다양한 엡실론 감쇠 일정 실험
+        epsilon = max(0.01, 0.1 - 0.01 * (n_epi / 200))
+
+        #epsilon = max(0.01, 0.08 - 0.01 * (n_epi / 200))  # Adjusted epsilon decay
         s = env.reset()
         step_count = 0
         score = 0.0
@@ -129,24 +139,27 @@ def main():
                 action = q_models[i].sample_action(torch.from_numpy(s).float(), epsilon)
                 a.append(action)
                 # Convert separate actions into a single action for the environment
+            # 모든 에이전트의 액션을 하나의 정수로 결합
             combined_action = sum([a[i] * (4 ** i) for i in range(num_lifts + num_robots)])
-            
-            # Pass action as a list with a single element
-            s_prime, r, done, _ = env.step([combined_action])  # Modified line
+            # 이 정수를 리스트로 변환하여 환경에 전달
+            s_prime, r, done, _ = env.step([combined_action])
+
             # done = (terminated or truncated)
             done_mask = 0.0 if done else 1.0
             for i in range(num_lifts + num_robots):
-                memory.put((s, a[i], r / 100.0, s_prime, done_mask))  # Store experience for each agent
+                memory.put((s, a[i], r, s_prime, done_mask))  # Store experience for each agent
             s = s_prime
 
             score += r
             if done:
                 print(f"Episode: {n_epi}, step: {step_count}, Reward: {score}")
+                
                 break
 
-        if memory.size() > 2000:
+        if memory.size() > 30000: #경험 리플레이 메모리의 크기가 일정 이상이 되면, 즉 memory.size()가 50000보다 크면, 학습을 수행하는 부분
             for i in range(num_lifts + num_robots):
                 train(q_models[i], q_targets[i], memory, optimizers[i])  # Train each model separately
+
 
         if n_epi % print_interval == 0 and n_epi != 0:
             for i in range(num_lifts + num_robots):
@@ -154,9 +167,17 @@ def main():
             print("Episode: {}, Score: {:.1f}, Buffer: {}, Eps: {:.1f}%".format(
                 n_epi, float(score / print_interval), memory.size(), float(epsilon * 100)
                 ))
+            reward_return_list.append(score/print_interval)
             score = 0.0
 
+       
     env.close()
+    plt.plot(reward_return_list)
+    plt.xlabel('Iteration')
+    plt.ylabel('Reward Origin_DQN')
+    plt.savefig('Reward_Origin_DQN.png', format='png', dpi=300)
+    # Display the plot
+    plt.show()
 
 if __name__ == '__main__':
     main()

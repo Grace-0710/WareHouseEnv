@@ -104,10 +104,11 @@ class WareHouseEnv(gym.Env):
                 self.robot_positions[i][0] = max(0, self.robot_positions[i][0] - 1)
 
             # 불필요한 움직임 패널티 주기(제자리에 머무는 경우와 사토장으로 이동하지 않았을 때, 패널티 줌)
-            # if self.robot_positions[i] == prev_position:
-            #     robot_penalty -= 1
             if self.robot_load[i] >= 5 and self.robot_positions[i] != [0, 0]:
                 robot_penalty += 3
+            elif self.cargo_map[self.robot_positions[i][1]][self.robot_positions[i][0]] == 0:
+                robot_penalty -= 1  # 로봇이 이동한 위치에 짐이 없는 경우 패널티 감소
+           
 
         # 로직: 굴삭 및 로딩
         robot_positions_set = set(tuple(pos) for pos in self.robot_positions)  # 덤프트럭 위치를 set으로 변환
@@ -121,8 +122,13 @@ class WareHouseEnv(gym.Env):
                         self.lift_carry[i] = 0
                         lift_bonus += 5  # 굴삭 및 로딩 보상 증가
             if self.lift_carry[i] == 0 and self.cargo_map[self.lift_positions[i][1]][self.lift_positions[i][0]] > 0:
-                self.lift_carry[i] = 1
-                self.cargo_map[self.lift_positions[i][1]][self.lift_positions[i][0]] -= 1
+                # 수정된 부분 시작
+                if self.lift_positions[i] in self.robot_positions and self.lift_carry[i] == 1:
+                    lift_penalty += 2
+                else:
+                    self.lift_carry[i] = 1
+                    self.cargo_map[self.lift_positions[i][1]][self.lift_positions[i][0]] -= 1
+                # 수정된 부분 끝
 
         for j in range(self.num_robot):
             if self.robot_positions[j] == [0, 0]:
@@ -132,8 +138,9 @@ class WareHouseEnv(gym.Env):
 
         # 패널티 및 보상 적용
         self.reward += reward - lift_penalty - robot_penalty + lift_bonus
+     
         if np.sum(self.cargo_map) == 0:
-            self.reward += 5000 - self.current_step  # 스텝 수에 따른 보상 감소
+            self.reward += self.max_steps - self.current_step  # 스텝 수에 따른 보상 감소
             done = True
             
             ## 출력 2가지 스타일
@@ -144,7 +151,7 @@ class WareHouseEnv(gym.Env):
         else:
             done = False
 
-        
+        #print("np.sum(self.cargo_map)::",np.sum(self.cargo_map))
         self.current_step += 1
         if self.current_step >= self.max_steps:
             done = True
