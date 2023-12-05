@@ -7,7 +7,7 @@ import pygame
 
 
 class WareHouseEnv(gym.Env):
-    def __init__(self, map_size=5, max_steps=2000, graphic=True, fps = 150):
+    def __init__(self, map_size=4, max_steps=5000, graphic=True, fps = 150):
         super(WareHouseEnv, self).__init__()
         ## 학습
         self.episode = 0
@@ -88,7 +88,7 @@ class WareHouseEnv(gym.Env):
                 
                 # excavator가 carry중인데, 덤프트럭이 존재하면 penalty값 감소
                 if self.lift_positions[i] in self.robot_positions and self.lift_carry[i] == 1:
-                    lift_penalty -= 2
+                    lift_penalty -= 2*(np.sum(self.cargo_map)/self.desired_total_sum)
 
         # Move each dumptruck based on its action
         for i in range(self.num_robot):
@@ -105,9 +105,9 @@ class WareHouseEnv(gym.Env):
 
             # 불필요한 움직임 패널티 주기(제자리에 머무는 경우와 사토장으로 이동하지 않았을 때, 패널티 줌)
             if self.robot_load[i] >= 5 and self.robot_positions[i] != [0, 0]:
-                robot_penalty += 3
+                robot_penalty += 3*(np.sum(self.cargo_map)/self.desired_total_sum)
             elif self.cargo_map[self.robot_positions[i][1]][self.robot_positions[i][0]] == 0:
-                robot_penalty -= 1  # 로봇이 이동한 위치에 짐이 없는 경우 패널티 감소
+                robot_penalty -= 1*(np.sum(self.cargo_map)/self.desired_total_sum)  # 로봇이 이동한 위치에 짐이 없는 경우 패널티 감소
            
 
         # 로직: 굴삭 및 로딩
@@ -121,14 +121,14 @@ class WareHouseEnv(gym.Env):
                         self.robot_load[j] += 1
                         self.lift_carry[i] = 0
                         lift_bonus += 5  # 굴삭 및 로딩 보상 증가
-            if self.lift_carry[i] == 0 and self.cargo_map[self.lift_positions[i][1]][self.lift_positions[i][0]] > 0:
-                # 수정된 부분 시작
+            if self.lift_carry[i] == 0 and self.cargo_map[self.lift_positions[i][1]][self.lift_positions[i][0]] > 0:                
                 if self.lift_positions[i] in self.robot_positions and self.lift_carry[i] == 1:
                     lift_penalty += 2
+                    
                 else:
                     self.lift_carry[i] = 1
                     self.cargo_map[self.lift_positions[i][1]][self.lift_positions[i][0]] -= 1
-                # 수정된 부분 끝
+              
 
         for j in range(self.num_robot):
             if self.robot_positions[j] == [0, 0]:
@@ -143,9 +143,7 @@ class WareHouseEnv(gym.Env):
             self.reward += self.max_steps - self.current_step  # 스텝 수에 따른 보상 감소
             done = True
             
-            ## 출력 2가지 스타일
-            if self.episode % 100 == 0:
-                print(f"Episode {self.episode}. Steps taken: {self.current_step}. Remaining soil: {np.sum(self.cargo_map)}. Total reward: {self.reward}")
+            print(f"Episode {self.episode}. Steps taken: {self.current_step}. Remaining soil: {np.sum(self.cargo_map)}. Total reward: {self.reward}")
             # print(f"Episode {self.episode}. Steps taken: {self.current_step}. Remaining soil: {np.sum(self.cargo_map)}. Total reward: {self.reward}")
             self.episode += 1
         else:

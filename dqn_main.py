@@ -12,7 +12,7 @@ import time
 # [ExcavatorEnv 코드는 여기에 위치]
  
 # 환경 생성
-env = DummyVecEnv([lambda: WareHouseEnv(map_size=4, max_steps=5000, graphic=0, fps=30)])
+env = DummyVecEnv([lambda: WareHouseEnv(map_size=4, max_steps=5000, graphic=1, fps=150)])
 
 def learning_rate_schedule(progress_remaining):
     # 이 함수는 학습의 진행에 따라 학습률을 반환합니다.
@@ -20,12 +20,12 @@ def learning_rate_schedule(progress_remaining):
     return 0.001 * progress_remaining
 
 model = DQN("MlpPolicy", env, verbose=0, learning_rate=learning_rate_schedule)
-model.learn(total_timesteps=100_000_000)
+model.learn(total_timesteps=100_000)
 
 # 학습된 모델을 환경에서 테스트
 obs = env.reset()
 reward_return_list = []
-for _ in range(100_000_000):
+for _ in range(100_000):
     action, _states = model.predict(obs)
     obs, rewards, dones, info = env.step(action)
     reward_return_list.append(rewards)
