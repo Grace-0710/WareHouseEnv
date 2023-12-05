@@ -116,16 +116,14 @@ def main():
         q_targets[i].load_state_dict(q_models[i].state_dict())
     memory = ReplayBuffer()
 
-    print_interval = 50
+    print_interval = 20
     score = 0.0
     optimizers = [optim.Adam(q.parameters(), lr=learning_rate) for q in q_models]
     reward_return_list = []
-    
-    for n_epi in range(1500):
+    epsilon_return_list = []
+    for n_epi in range(3000):
         # 다양한 엡실론 감쇠 일정 실험
-        epsilon = max(0.01, 0.1 - 0.01 * (n_epi / 400))
-
-        #epsilon = max(0.01, 0.08 - 0.01 * (n_epi / 200))  # Adjusted epsilon decay
+        epsilon = max(0.01, 0.08 - 0.01 * (n_epi / 200))  # Adjusted epsilon decay
         s = env.reset()
         step_count = 0
         score = 0.0
@@ -168,16 +166,24 @@ def main():
                 n_epi, float(score / print_interval), memory.size(), float(epsilon * 100)
                 ))
             reward_return_list.append(score/print_interval)
+            epsilon_return_list.append(n_epi)
             score = 0.0
 
        
     env.close()
     now = datetime.now()
     nowtxt = now.strftime('%Y-%m-%d%H:%M:%S')
-    plt.plot(reward_return_list)
+    # plt.plot(reward_return_list)
+    # plt.xlabel('Iteration')
+    # plt.ylabel('Reward Origin_DQN')
+    # plt.savefig('Reward_Origin_DQN'+nowtxt+'.png', format='png', dpi=300)
+    # # Display the plot
+    # plt.show()
+
+    plt.plot(epsilon_return_list)
     plt.xlabel('Iteration')
-    plt.ylabel('Reward Origin_DQN')
-    plt.savefig('Reward_Origin_DQN'+nowtxt+'.png', format='png', dpi=300)
+    plt.ylabel('Epsilon Origin_DQN')
+    plt.savefig('Epsilon_Origin_DQN'+nowtxt+'.png', format='png', dpi=300)
     # Display the plot
     plt.show()
 
