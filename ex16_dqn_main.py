@@ -166,7 +166,7 @@ def main():
                 n_epi, float(score / print_interval), memory.size(), float(epsilon * 100)
                 ))
             reward_return_list.append(score/print_interval)
-            epsilon_return_list.append(n_epi)
+            epsilon_return_list.append(float(epsilon * 100))
             score = 0.0
 
        

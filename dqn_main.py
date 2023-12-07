@@ -21,15 +21,17 @@ def learning_rate_schedule(progress_remaining):
     return 0.001 * progress_remaining
 
 model = DQN("MlpPolicy", env, verbose=0, learning_rate=learning_rate_schedule)
-model.learn(total_timesteps=100_000)
+model.learn(total_timesteps=1000)
 
 # 학습된 모델을 환경에서 테스트
 obs = env.reset()
 reward_return_list = []
-for _ in range(100_000):
+epsilon_return_list = []
+for _ in range(1000):
     action, _states = model.predict(obs)
     obs, rewards, dones, info = env.step(action)
     reward_return_list.append(rewards)
+   
 
 
 env.close()

@@ -71,75 +71,90 @@ class WareHouseEnv(gym.Env):
         lift_penalty = 0
         robot_penalty = 0
         lift_bonus = 0
-        
+
         # Apply actions to lifts
         for i in range(self.num_lift):
             action = individual_actions[i]
             if self.lift_carry[i] != 1:
                 prev_position = list(self.lift_positions[i])
                 if action == 0:  # up
-                    self.lift_positions[i][1] = min(self.map_size-1, self.lift_positions[i][1] + 1)
+                    self.lift_positions[i][1] = min(self.map_size - 1, self.lift_positions[i][1] + 1)
                 elif action == 1:  # right
-                    self.lift_positions[i][0] = min(self.map_size-1, self.lift_positions[i][0] + 1)
+                    self.lift_positions[i][0] = min(self.map_size - 1, self.lift_positions[i][0] + 1)
                 elif action == 2:  # down
                     self.lift_positions[i][1] = max(0, self.lift_positions[i][1] - 1)
                 elif action == 3:  # left
                     self.lift_positions[i][0] = max(0, self.lift_positions[i][0] - 1)
-                
+
                 # excavator가 carry중인데, 덤프트럭이 존재하면 penalty값 감소
                 if self.lift_positions[i] in self.robot_positions and self.lift_carry[i] == 1:
-                    lift_penalty -= 2*(np.sum(self.cargo_map)/self.desired_total_sum)
+                    lift_penalty -= 10 * (np.sum(self.cargo_map) / self.desired_total_sum)
 
         # Move each dumptruck based on its action
         for i in range(self.num_robot):
             action = individual_actions[self.num_lift + i]
             prev_position = list(self.robot_positions[i])
             if action == 0:  # up
-                self.robot_positions[i][1] = min(self.map_size-1, self.robot_positions[i][1] + 1)
+                self.robot_positions[i][1] = min(self.map_size - 1, self.robot_positions[i][1] + 1)
             elif action == 1:  # right
-                self.robot_positions[i][0] = min(self.map_size-1, self.robot_positions[i][0] + 1)
+                self.robot_positions[i][0] = min(self.map_size - 1, self.robot_positions[i][0] + 1)
             elif action == 2:  # down
                 self.robot_positions[i][1] = max(0, self.robot_positions[i][1] - 1)
             elif action == 3:  # left
                 self.robot_positions[i][0] = max(0, self.robot_positions[i][0] - 1)
 
             # 불필요한 움직임 패널티 주기(제자리에 머무는 경우와 사토장으로 이동하지 않았을 때, 패널티 줌)
-            if self.robot_load[i] >= 5 and self.robot_positions[i] != [0, 0]:
-                robot_penalty += 3*(np.sum(self.cargo_map)/self.desired_total_sum)
+            if self.robot_load[i] >= 4 and self.robot_positions[i] != [0, 0]:
+                robot_penalty += 1 * (np.sum(self.cargo_map) / self.desired_total_sum)
             elif self.cargo_map[self.robot_positions[i][1]][self.robot_positions[i][0]] == 0:
-                robot_penalty -= 1*(np.sum(self.cargo_map)/self.desired_total_sum)  # 로봇이 이동한 위치에 짐이 없는 경우 패널티 감소
-           
+                # 로봇이 이동한 위치에 짐이 없는 경우 패널티 부여
+                robot_penalty += 1 * (np.sum(self.cargo_map) / self.desired_total_sum)
 
         # 로직: 굴삭 및 로딩
         robot_positions_set = set(tuple(pos) for pos in self.robot_positions)  # 덤프트럭 위치를 set으로 변환
 
         for i in range(self.num_lift):
             if self.lift_carry[i] == 1:
-                if tuple(self.lift_positions[i]) in robot_positions_set:  # O(1)의 시간 복잡도로 위치 확인
-                    j = self.robot_positions.index(self.lift_positions[i])  # 일치하는 덤프트럭의 인덱스를 찾습니다.
-                    if self.robot_load[j] < 6:
+                # 굴삭기가 이동할 방향을 무작위로 선택
+                move_direction = np.random.choice([0, 1, 2, 3])
+                if move_direction == 0:  # up
+                    self.lift_positions[i][1] = min(self.map_size-1, self.lift_positions[i][1] + 1)
+                elif move_direction == 1:  # right
+                    self.lift_positions[i][0] = min(self.map_size-1, self.lift_positions[i][0] + 1)
+                elif move_direction == 2:  # down
+                    self.lift_positions[i][1] = max(0, self.lift_positions[i][1] - 1)
+                elif move_direction == 3:  # left
+                    self.lift_positions[i][0] = max(0, self.lift_positions[i][0] - 1)
+
+                # excavator가 carry중인데, 덤프트럭이 존재하면 penalty값 감소
+                if self.lift_positions[i] in self.robot_positions and self.lift_carry[i] == 1:
+                    lift_penalty -= 2 * (np.sum(self.cargo_map) / self.desired_total_sum)
+
+                # 로봇이 있는 위치에 도달했을 때 로봇에게 짐을 적재
+                if tuple(self.lift_positions[i]) in robot_positions_set:
+                    j = self.robot_positions.index(self.lift_positions[i])
+                    if self.robot_load[j] < 10:
                         self.robot_load[j] += 1
                         self.lift_carry[i] = 0
-                        lift_bonus += 5  # 굴삭 및 로딩 보상 증가
-            if self.lift_carry[i] == 0 and self.cargo_map[self.lift_positions[i][1]][self.lift_positions[i][0]] > 0:                
+                        lift_bonus += 20  # 굴삭 및 로딩 보상 증가
+                        reward += 20
+
+            if self.lift_carry[i] == 0 and self.cargo_map[self.lift_positions[i][1]][self.lift_positions[i][0]] > 0:
                 if self.lift_positions[i] in self.robot_positions and self.lift_carry[i] == 1:
-                    lift_penalty += 2
-                    
+                    lift_penalty += 2 * (np.sum(self.cargo_map) / self.desired_total_sum)
                 else:
                     self.lift_carry[i] = 1
                     self.cargo_map[self.lift_positions[i][1]][self.lift_positions[i][0]] -= 1
-              
+
 
         for j in range(self.num_robot):
-            if self.robot_positions[j] == [0, 0]:
-                reward += self.robot_load[j] * 1.2  # 추가적인 로딩 보상
-                self.robot_load[j] = 0
-
+            reward += self.robot_load[j] * 4  # 추가적인 로딩 보상
+            self.robot_load[j] = 0
 
         # 패널티 및 보상 적용
         self.reward += reward - lift_penalty - robot_penalty + lift_bonus
-     
-        if np.sum(self.cargo_map) == 0:
+        self.current_step += 1     
+        if np.sum(self.cargo_map) == 0 or self.current_step == self.max_steps:
             self.reward += self.max_steps - self.current_step  # 스텝 수에 따른 보상 감소
             done = True
             
@@ -149,17 +164,15 @@ class WareHouseEnv(gym.Env):
         else:
             done = False
 
-        #print("np.sum(self.cargo_map)::",np.sum(self.cargo_map))
-        self.current_step += 1
-        if self.current_step >= self.max_steps:
-            done = True
-            self.episode += 1
+        print(f"Reward:: {reward}, lift_penalty:: {lift_penalty}, robot_penalty:: {robot_penalty}, lift_bonus:: {lift_bonus}, SelfReward:: {self.reward}")
 
-
-        if self.graphic == True and self.render_mode == "human":
+        
+    
+        if self.graphic and self.render_mode == "human":
             self.render_frame()
 
         return self._next_observation(), self.reward, done, {}
+
 
     def render_frame(self):
         if self.window is None and self.render_mode == "human":
