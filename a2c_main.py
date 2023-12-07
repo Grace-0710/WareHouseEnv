@@ -17,12 +17,12 @@ env = DummyVecEnv([lambda: WareHouseEnv(map_size=4, max_steps=5000, graphic=0, f
 
 # A2C 모델 초기화
 model = A2C("MlpPolicy", env, verbose=1)
-model.learn(total_timesteps=100_000)
+model.learn(total_timesteps=1000)
 
 # 학습된 모델을 환경에서 테스트
 obs = env.reset()
 reward_return_list = []
-for _ in range(100_000):
+for _ in range(1000):
     action, _states = model.predict(obs)
     obs, rewards, dones, info = env.step(action)
     reward_return_list.append(rewards)

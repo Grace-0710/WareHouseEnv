@@ -121,7 +121,7 @@ def main():
     optimizers = [optim.Adam(q.parameters(), lr=learning_rate) for q in q_models]
     reward_return_list = []
     epsilon_return_list = []
-    for n_epi in range(3000):
+    for n_epi in range(1000):
         # 다양한 엡실론 감쇠 일정 실험
         epsilon = max(0.01, 0.08 - 0.01 * (n_epi / 200))  # Adjusted epsilon decay
         s = env.reset()
