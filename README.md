@@ -43,10 +43,14 @@
     
 - 목표 : 로봇의 최소 움직임으로 모든 짐이 없어져야 함.
 
-[ 프로젝트 빌드 ]
+[ 프로젝트 파일 및 빌드 ]
 - 환경 : anaconda로 가상환경 구축 후 실행
 - WareHouseEnv 환경구축 파일 : env.py
-- dqn 파일 : dqn_sy.py
+- dqn 파일 : dqn_main.py
 - custom dqn 파일 : ex16_dqn_main.py
 1. requirements.txt install : pip install -r requirements.txt ( pip3 install -r requirements.txt )
-2. train 학습 run : python dqn_main.py
+2. train 학습 run
+- dqn 알고리즘 학습 : python dqn_main.py ( python3 dqn_main.py )
+- Custom dqn 알고리즘 학습 : python ex16_dqn_main.py ( python3 ex16_dqn_main.py )
+- A2C 알고리즘 학습 : python a2c_main.py ( python3 a2c_main.py )
+- PPO 알고리즘 학습 : python ppo_main.py ( python3 ppo_main.py )

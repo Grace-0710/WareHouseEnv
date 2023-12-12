@@ -173,19 +173,19 @@ def main():
     env.close()
     now = datetime.now()
     nowtxt = now.strftime('%Y-%m-%d%H:%M:%S')
-    # plt.plot(reward_return_list)
-    # plt.xlabel('Iteration')
-    # plt.ylabel('Reward Origin_DQN')
-    # plt.savefig('Reward_Origin_DQN'+nowtxt+'.png', format='png', dpi=300)
-    # # Display the plot
-    # plt.show()
-
-    plt.plot(epsilon_return_list)
+    plt.plot(reward_return_list)
     plt.xlabel('Iteration')
-    plt.ylabel('Epsilon Origin_DQN')
-    plt.savefig('Epsilon_Origin_DQN'+nowtxt+'.png', format='png', dpi=300)
+    plt.ylabel('Reward Origin_DQN')
+    plt.savefig('Reward_Origin_DQN'+nowtxt+'.png', format='png', dpi=300)
     # Display the plot
     plt.show()
+
+    # plt.plot(epsilon_return_list)
+    # plt.xlabel('Iteration')
+    # plt.ylabel('Epsilon Origin_DQN')
+    # plt.savefig('Epsilon_Origin_DQN'+nowtxt+'.png', format='png', dpi=300)
+    # # Display the plot
+    # plt.show()
 
 if __name__ == '__main__':
     main()
