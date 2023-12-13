@@ -3,9 +3,9 @@ import gym
 from dqn_sy import DQN 
 from stable_baselines3.common.vec_env import DummyVecEnv
 from env import WareHouseEnv
+import torch
 import warnings
 import matplotlib.pyplot as plt
-from datetime import datetime
 # 경고 메시지 무시 설정
 warnings.filterwarnings('ignore', category=UserWarning, module='stable_baselines3.common.vec_env.base_vec_env')
 
@@ -35,11 +35,11 @@ for _ in range(1000):
 
 
 env.close()
-now = datetime.now()
-nowtxt = now.strftime('%Y-%m-%d%H:%M:%S')
+model.save("DQN_Model")
+
 plt.plot(reward_return_list)
 plt.xlabel('Iteration')
 plt.ylabel('Reward DQN')
-plt.savefig('Reward_DQN.png'+nowtxt+'.png', format='png', dpi=300)
+plt.savefig('Reward_DQN.png', format='png', dpi=300)
 # Display the plot
 plt.show()

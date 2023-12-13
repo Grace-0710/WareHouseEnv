@@ -3,13 +3,14 @@ import random
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import zipfile
 import torch.nn.functional as F
 from stable_baselines3.common.vec_env import DummyVecEnv
 from env import WareHouseEnv  # env 모듈 경로를 실제 모듈 위치로 변경
 import numpy as np
 import warnings
 import matplotlib.pyplot as plt
-from datetime import datetime
+
 # 경고메세지 끄기
 warnings.filterwarnings(action='ignore')
 
@@ -101,6 +102,15 @@ def train(q, q_target, memory, optimizer):
         loss.backward()
         optimizer.step()
 
+def save_models_zip(q_models, file_prefix, zip_filename):
+    with zipfile.ZipFile(zip_filename, 'w') as zip_file:
+        for i, q_model in enumerate(q_models):
+            model_path = f"{file_prefix}_MODEL_{i}.pth"
+            torch.save(q_model.state_dict(), model_path)
+           
+            # 압축 파일에 모델 파일 추가
+            zip_file.write(model_path, arcname=f"{file_prefix}_MODEL_{i}.pth")
+     
 
 def main():
     num_lifts = 2
@@ -169,21 +179,22 @@ def main():
             epsilon_return_list.append(float(epsilon * 100))
             score = 0.0
 
+    save_models_zip(q_models, "EX16_DQN", "EX16_DQN_MODEL.zip")        
+           
        
     env.close()
-    now = datetime.now()
-    nowtxt = now.strftime('%Y-%m-%d%H:%M:%S')
+    
     plt.plot(reward_return_list)
     plt.xlabel('Iteration')
     plt.ylabel('Reward Origin_DQN')
-    plt.savefig('Reward_Origin_DQN'+nowtxt+'.png', format='png', dpi=300)
+    plt.savefig('Reward_Origin_DQN.png', format='png', dpi=300)
     # Display the plot
     plt.show()
 
     # plt.plot(epsilon_return_list)
     # plt.xlabel('Iteration')
     # plt.ylabel('Epsilon Origin_DQN')
-    # plt.savefig('Epsilon_Origin_DQN'+nowtxt+'.png', format='png', dpi=300)
+    # plt.savefig('Epsilon_Origin_DQN.png', format='png', dpi=300)
     # # Display the plot
     # plt.show()
 

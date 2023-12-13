@@ -12,7 +12,7 @@ import time
 # [ExcavatorEnv 코드는 여기에 위치]
  
 # 환경 생성
-env = DummyVecEnv([lambda: WareHouseEnv(map_size=4, max_steps=5000, graphic=True, fps=30)])
+env = DummyVecEnv([lambda: WareHouseEnv(map_size=4, max_steps=5000, graphic=False, fps=30)])
 
 # A2C 모델 초기화
 model = PPO("MlpPolicy", env, verbose=1)
@@ -29,6 +29,7 @@ for _ in range(500):
 
 
 env.close()
+model.save("PPO_Model")
 plt.plot(reward_return_list)
 plt.xlabel('Iteration')
 plt.ylabel('Reward PPO')
