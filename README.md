@@ -49,10 +49,10 @@
 - dqn 파일 : dqn_main.py
 - custom dqn 파일 : ex16_dqn_main.py
 - Train Model Download File
-   * custom dqn 파일 : EX16_DQN_MODEL.zip
-   * dqn 파일 : DQN_Model.zip
-   * A2C 파일 : A2C_Model.zip
-   * PPO 파일 : PPO_Model.zip
+   * custom dqn 파일 : [EX16_DQN_MODEL.zip](https://github.com/Grace-0710/WareHouseEnv/blob/master/EX16_DQN_MODEL.zip)
+   * dqn 파일 : [DQN_Model.zip](https://github.com/Grace-0710/WareHouseEnv/blob/master/DQN_Model.zip)
+   * A2C 파일 : [A2C_Model.zip](https://github.com/Grace-0710/WareHouseEnv/blob/master/A2C_Model.zip)
+   * PPO 파일 : [PPO_Model.zip](https://github.com/Grace-0710/WareHouseEnv/blob/master/PPO_Model.zip)
 [ 프로젝트 빌드 ]
 1. requirements.txt install : pip install -r requirements.txt ( pip3 install -r requirements.txt )
 2. train 학습 run
